@@ -14,8 +14,6 @@ pids
 *.seed
 *.pid.lock
 node
-node-bin
-.node-bin
 # Environment
 .env
 .env.local
