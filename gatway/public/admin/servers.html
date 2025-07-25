@@ -1,0 +1,1735 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gateway Monitor - Enhanced Logging</title>
+    <!-- <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script> -->
+    <script src="/socket.io/socket.io.js"></script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2563eb;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --info-color: #3b82f6;
+            --dark-color: #1f2937;
+            --light-color: #f8fafc;
+            --border-color: #e5e7eb;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --error-bg: #fef2f2;
+            --error-border: #fecaca;
+            --warning-bg: #fffbeb;
+            --warning-border: #fed7aa;
+            --success-bg: #f0fdf4;
+            --success-border: #bbf7d0;
+            --info-bg: #eff6ff;
+            --info-border: #bfdbfe;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            min-width: 0;
+        }
+
+        .header-title i {
+            color: var(--primary-color);
+            font-size: clamp(1.5rem, 3vw, 1.75rem);
+            flex-shrink: 0;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: clamp(0.5rem, 2vw, 2rem);
+            align-items: center;
+            flex-wrap: wrap;
+            min-width: 0;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .connection-status.connected {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .connection-status.disconnected {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+        }
+
+        .connection-status i {
+            animation: pulse 2s infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: clamp(1rem, 3vw, 2rem);
+            width: 100%;
+        }
+
+        /* Controls */
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            padding: clamp(1rem, 2.5vw, 1.5rem);
+            margin-bottom: clamp(1rem, 3vw, 2rem);
+            box-shadow: var(--shadow);
+            display: flex;
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: clamp(0.5rem, 1.5vw, 0.75rem) clamp(1rem, 2.5vw, 1.5rem);
+            border: none;
+            border-radius: 0.5rem;
+            font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        /* Services Grid */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
+            gap: clamp(1rem, 2.5vw, 1.5rem);
+            width: 100%;
+        }
+
+        /* Service Cards */
+        .service-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 1rem;
+            padding: clamp(1rem, 2.5vw, 1.5rem);
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            border: 1px solid var(--border-color);
+            width: 100%;
+            min-width: 0;
+            overflow: hidden;
+            word-wrap: break-word;
+        }
+
+        .service-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .service-card.gateway {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(59, 130, 246, 0.05) 100%);
+            border-color: var(--primary-color);
+        }
+
+        .service-card.error {
+            border-color: var(--danger-color);
+            background: linear-gradient(135deg, var(--error-bg) 0%, rgba(255, 255, 255, 0.95) 100%);
+        }
+
+        .service-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            gap: 1rem;
+            min-width: 0;
+        }
+
+        .service-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: clamp(1rem, 2vw, 1.125rem);
+            font-weight: 600;
+            color: var(--text-primary);
+            min-width: 0;
+            flex: 1;
+        }
+
+        .service-icon {
+            width: clamp(2rem, 4vw, 2.5rem);
+            height: clamp(2rem, 4vw, 2.5rem);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .service-icon.gateway {
+            background: var(--primary-color);
+        }
+
+        .service-icon.microservice {
+            background: var(--success-color);
+        }
+
+        .service-icon.error {
+            background: var(--danger-color);
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .status-badge.up {
+            background: var(--success-bg);
+            color: var(--success-color);
+            border: 1px solid var(--success-border);
+        }
+
+        .status-badge.down {
+            background: var(--error-bg);
+            color: var(--danger-color);
+            border: 1px solid var(--error-border);
+        }
+
+        .status-badge.error {
+            background: var(--error-bg);
+            color: var(--danger-color);
+            border: 1px solid var(--error-border);
+        }
+
+        .status-badge.unknown {
+            background: var(--warning-bg);
+            color: var(--warning-color);
+            border: 1px solid var(--warning-border);
+        }
+
+        .status-indicator {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+            flex-shrink: 0;
+        }
+
+        /* Service Info */
+        .service-info {
+            margin: 1rem 0;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            gap: 1rem;
+            min-width: 0;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+            color: var(--text-secondary);
+            font-weight: 500;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .info-value {
+            font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+            color: var(--text-primary);
+            font-weight: 600;
+            text-align: right;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-word;
+            min-width: 0;
+        }
+
+        /* Service Actions */
+        .service-actions {
+            display: flex;
+            gap: clamp(0.5rem, 1.5vw, 0.75rem);
+            margin-top: clamp(1rem, 2vw, 1.5rem);
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            flex-wrap: wrap;
+        }
+
+        .btn-sm {
+            padding: clamp(0.375rem, 1vw, 0.5rem) clamp(0.75rem, 2vw, 1rem);
+            font-size: clamp(0.7rem, 1.3vw, 0.8125rem);
+            flex: 1;
+            min-width: fit-content;
+            justify-content: center;
+        }
+
+        /* Enhanced Logs Section */
+        .service-logs {
+            margin-top: 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+            width: 100%;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+
+        .log-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: #2d2d2d;
+            border-bottom: 1px solid #404040;
+            color: #e5e5e5;
+        }
+
+        .log-title {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+            font-weight: 500;
+        }
+
+        .log-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .log-btn {
+            padding: 0.25rem 0.5rem;
+            border: 1px solid #404040;
+            background: #3a3a3a;
+            color: #e5e5e5;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .log-btn:hover {
+            background: #4a4a4a;
+            border-color: #505050;
+        }
+
+        .log-content {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #1a1a1a;
+            scrollbar-width: thin;
+            scrollbar-color: #404040 #1a1a1a;
+        }
+
+        .log-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .log-content::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        .log-content::-webkit-scrollbar-thumb {
+            background: #404040;
+            border-radius: 4px;
+        }
+
+        .log-content::-webkit-scrollbar-thumb:hover {
+            background: #505050;
+        }
+
+        /* Log Entry Types */
+        .log-entry {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #2a2a2a;
+            font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+            font-size: clamp(0.7rem, 1.3vw, 0.8125rem);
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-entry.error {
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
+            border-left: 3px solid var(--danger-color);
+            color: #ff6b6b;
+        }
+
+        .log-entry.warning {
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, transparent 100%);
+            border-left: 3px solid var(--warning-color);
+            color: #ffd93d;
+        }
+
+        .log-entry.success {
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%);
+            border-left: 3px solid var(--success-color);
+            color: #51cf66;
+        }
+
+        .log-entry.info {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
+            border-left: 3px solid var(--info-color);
+            color: #74c0fc;
+        }
+
+        .log-entry.default {
+            color: #e5e5e5;
+            border-left: 3px solid #404040;
+        }
+
+        .log-timestamp {
+            color: #888;
+            font-size: 0.7rem;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+
+        .log-type {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+            margin-right: 0.5rem;
+        }
+
+        .log-type.error {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .log-type.warning {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .log-type.success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .log-type.info {
+            background: var(--info-color);
+            color: white;
+        }
+
+        .log-type.stderr {
+            background: #dc2626;
+            color: white;
+        }
+
+        .log-type.stdout {
+            background: #059669;
+            color: white;
+        }
+
+        .log-message {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Process Info */
+        .process-info {
+            display: flex;
+            gap: 1rem;
+            margin: 0.5rem 0;
+            padding: 0.75rem;
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(59, 130, 246, 0.1);
+        }
+
+        .process-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .process-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Error Highlighting */
+        .error-highlight {
+            background: rgba(239, 68, 68, 0.1);
+            padding: 0.125rem 0.25rem;
+            border-radius: 0.25rem;
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+
+        .error-text {
+            color: var(--danger-color) !important;
+            font-weight: 700;
+        }
+
+        .info-value {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .info-value:hover {
+            overflow: visible;
+            white-space: normal;
+            word-break: break-all;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1rem 1.5rem;
+            box-shadow: var(--shadow-lg);
+            border-left: 4px solid var(--primary-color);
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            max-width: min(400px, calc(100vw - 2rem));
+            word-wrap: break-word;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left-color: var(--success-color);
+        }
+
+        .notification.error {
+            border-left-color: var(--danger-color);
+        }
+
+        .notification.warning {
+            border-left-color: var(--warning-color);
+        }
+
+        .notification-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .notification-body {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            word-wrap: break-word;
+        }
+
+        /* Mobile Optimizations */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn {
+                justify-content: center;
+                width: 100%;
+            }
+
+            .services-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .service-actions {
+                flex-direction: column;
+            }
+
+            .btn-sm {
+                width: 100%;
+                flex: none;
+            }
+
+            .log-controls {
+                flex-direction: column;
+                gap: 0.25rem;
+            }
+
+            .process-info {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --text-primary: #f9fafb;
+                --text-secondary: #d1d5db;
+                --border-color: #374151;
+                --light-color: #1f2937;
+            }
+
+            body {
+                background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            }
+
+            .service-card,
+            .header,
+            .controls {
+                background: rgba(31, 41, 55, 0.95);
+                border-color: var(--border-color);
+            }
+
+            .notification {
+                background: #374151;
+                color: #f9fafb;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-title">
+                <i class="fas fa-satellite-dish"></i>
+                <span>API Gateway Monitor</span>
+            </div>
+            <div class="header-stats">
+                <div class="stat-item">
+                    <i class="fas fa-server"></i>
+                    <span>Services: <span class="stat-value" id="serviceCount">0</span></span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Online: <span class="stat-value" id="onlineCount">0</span></span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Errors: <span class="stat-value" id="errorCount">0</span></span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-clock"></i>
+                    <span>Updated: <span class="stat-value" id="lastUpdate">Never</span></span>
+                </div>
+                <div class="connection-status disconnected" id="connectionStatus">
+                    <i class="fas fa-circle"></i>
+                    <span>Disconnected</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Controls -->
+        <div class="controls">
+            <button class="btn btn-primary" onclick="refreshServices()">
+                <i class="fas fa-sync-alt"></i>
+                Refresh All
+            </button>
+            <button class="btn btn-success" onclick="startAllServices()">
+                <i class="fas fa-play"></i>
+                Start All
+            </button>
+            <button class="btn btn-danger" onclick="stopAllServices()">
+                <i class="fas fa-stop"></i>
+                Stop All
+            </button>
+            <button class="btn btn-secondary" onclick="toggleAutoRefresh()">
+                <i class="fas fa-clock" id="autoRefreshIcon"></i>
+                <span id="autoRefreshText">Auto-refresh</span>
+            </button>
+            <button class="btn btn-secondary" onclick="clearAllLogs()">
+                <i class="fas fa-trash"></i>
+                Clear Logs
+            </button>
+            <button class="btn btn-secondary" onclick="exportLogs()">
+                <i class="fas fa-download"></i>
+                Export
+            </button>
+        </div>
+
+        <!-- Services Grid -->
+        <div class="services-grid" id="servicesGrid">
+            <!-- Services will be populated here -->
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <i class="fas fa-server"></i>
+            <h3>No Services Found</h3>
+            <p>Waiting for service data from the gateway...</p>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - Update these URLs to match your backend
+        const GATEWAY_URL = 'http://localhost:3000';
+        const SOCKET_URL = 'http://localhost:3000';
+
+        // Global statesing
+        let socket = null;
+        let services = {};
+        let gateway = {};
+        let autoRefresh = false;
+        let autoRefreshInterval = null;
+        let lastUpdateTime = null;
+        let serviceLogs = {}; // Store logs for each service
+        let connectionRetries = 0;
+        const MAX_RETRIES = 5;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('🚀 Initializing Gateway Monitor...');
+            initializeSocket();
+            setupEventListeners();
+            // Try to load initial data via HTTP if socket fails
+            setTimeout(loadInitialData, 2000);
+        });
+
+        function initializeSocket() {
+            try {
+                console.log(`🔌 Connecting to socket at: ${SOCKET_URL}`);
+
+                socket = io(SOCKET_URL, {
+                    transports: ['websocket', 'polling'],
+                    timeout: 10000,
+                    reconnection: true,
+                    reconnectionDelay: 2000,
+                    reconnectionAttempts: MAX_RETRIES,
+                    forceNew: true
+                });
+
+                socket.on('connect', handleConnect);
+                socket.on('disconnect', handleDisconnect);
+                socket.on('connect_error', handleConnectError);
+                socket.on('reconnect', handleReconnect);
+                socket.on('reconnect_error', handleReconnectError);
+                socket.on('welcome', handleWelcome);
+                socket.on('service-status', handleServiceStatus);
+                socket.on('service-logs', handleServiceLogs);
+
+            } catch (error) {
+                console.error('❌ Socket initialization failed:', error);
+                showNotification('Failed to initialize socket connection', 'error');
+                updateConnectionStatus(false);
+            }
+        }
+
+        function setupEventListeners() {
+            document.addEventListener('keydown', function (e) {
+                if (e.ctrlKey || e.metaKey) {
+                    switch (e.key) {
+                        case 'r':
+                            e.preventDefault();
+                            refreshServices();
+                            break;
+                        case 's':
+                            e.preventDefault();
+                            startAllServices();
+                            break;
+                        case 'x':
+                            e.preventDefault();
+                            stopAllServices();
+                            break;
+                    }
+                }
+            });
+
+            // Add visibility change listener to reconnect when tab becomes active
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden && (!socket || !socket.connected)) {
+                    console.log('🔄 Tab became active, attempting to reconnect...');
+                    initializeSocket();
+                }
+            });
+        }
+
+        function handleConnect() {
+            console.log('✅ Connected to gateway socket');
+            connectionRetries = 0;
+            updateConnectionStatus(true);
+            showNotification('Connected to gateway', 'success');
+
+            // Request initial data
+            if (socket) {
+                socket.emit('get-services');
+            }
+        }
+
+        function handleDisconnect(reason) {
+            console.log('❌ Disconnected from gateway:', reason);
+            updateConnectionStatus(false);
+            showNotification(`Disconnected: ${reason}`, 'error');
+        }
+
+        function handleConnectError(error) {
+            console.error('🔥 Connection error:', error);
+            connectionRetries++;
+            updateConnectionStatus(false);
+
+            if (connectionRetries >= MAX_RETRIES) {
+                showNotification('Connection failed after multiple attempts. Trying HTTP fallback...', 'error');
+                loadInitialData();
+            } else {
+                showNotification(`Connection attempt ${connectionRetries}/${MAX_RETRIES} failed`, 'warning');
+            }
+        }
+
+        function handleReconnect(attemptNumber) {
+            console.log(`🔄 Reconnected after ${attemptNumber} attempts`);
+            showNotification('Reconnected to gateway', 'success');
+        }
+
+        function handleReconnectError(error) {
+            console.error('🔥 Reconnection failed:', error);
+        }
+
+        function handleWelcome(data) {
+            console.log('👋 Welcome message:', data);
+            if (data && data.msg) {
+                showNotification(data.msg, 'success');
+            }
+        }
+
+        function handleServiceStatus(data) {
+            console.log('📡 Service Status Update:', data);
+
+            if (!data) {
+                console.warn('⚠️ Received empty service status data');
+                return;
+            }
+
+            // Handle different data formats from your backend
+            if (data.services) {
+                services = data.services;
+            } else if (typeof data === 'object') {
+                // If data is the services object directly
+                services = data;
+            }
+
+            gateway = data.gateway || {};
+            lastUpdateTime = new Date();
+
+            updateStats();
+            renderServices();
+            hideEmptyState();
+        }
+
+        function handleServiceLogs(data) {
+            console.log('📋 Service Logs:', data);
+
+            if (data && data.serviceName && data.logs) {
+                if (!serviceLogs[data.serviceName]) {
+                    serviceLogs[data.serviceName] = [];
+                }
+                serviceLogs[data.serviceName].push(...data.logs);
+
+                // Keep only last 100 log entries per service
+                if (serviceLogs[data.serviceName].length > 100) {
+                    serviceLogs[data.serviceName] = serviceLogs[data.serviceName].slice(-100);
+                }
+
+                updateServiceLogs(data.serviceName);
+            }
+        }
+
+        // HTTP Fallback for when socket connection fails
+        async function loadInitialData() {
+            try {
+                console.log('🌐 Attempting HTTP fallback to load services...');
+                const response = await fetch(`${GATEWAY_URL}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ HTTP fallback successful:', data);
+                    handleServiceStatus(data.services.services);
+                    showNotification('Loaded services via HTTP', 'info');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('❌ HTTP fallback failed:', error);
+                showNotification('Unable to connect to gateway. Please check if the server is running.', 'error');
+                showEmptyState();
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            const icon = statusElement.querySelector('i');
+            const text = statusElement.querySelector('span');
+
+            if (connected) {
+                statusElement.className = 'connection-status connected';
+                icon.className = 'fas fa-circle';
+                text.textContent = 'Connected';
+            } else {
+                statusElement.className = 'connection-status disconnected';
+                icon.className = 'fas fa-circle';
+                text.textContent = 'Disconnected';
+            }
+        }
+
+        function determineServiceStatus(service) {
+            if (!service) return 'UNKNOWN';
+
+            // First check if there's an explicit status field
+            if (service.status) {
+                return service.status.toUpperCase();
+            }
+
+            // Check message content for health indicators
+            if (service.message) {
+                const message = service.message.toLowerCase();
+                if (message.includes('healthy') || message.includes('running') || message.includes('active')) {
+                    return 'UP';
+                }
+                if (message.includes('down') || message.includes('stopped') || message.includes('inactive')) {
+                    return 'DOWN';
+                }
+                if (message.includes('error') || message.includes('failed') || message.includes('crash')) {
+                    return 'ERROR';
+                }
+            }
+
+            // Check stderr for errors
+            if (service.stderr) {
+                return 'ERROR';
+            }
+
+            // Check PID - if has PID, likely running
+            if (service.pid) {
+                return 'UP';
+            }
+
+            // If no PID and no clear indicators, assume DOWN
+            return 'DOWN';
+        }
+
+        function updateStats() {
+            const serviceCount = Object.keys(services).length + (gateway.status ? 1 : 0);
+
+            let onlineCount = 0;
+            let errorCount = 0;
+
+            // Count services properly using improved status logic
+            Object.values(services).forEach(service => {
+                const status = determineServiceStatus(service);
+                if (status === 'UP') {
+                    onlineCount++;
+                } else if (status === 'ERROR') {
+                    errorCount++;
+                }
+                // DOWN services don't count as errors unless they have stderr
+            });
+
+            // Add gateway if present
+            if (gateway.status === 'UP') {
+                onlineCount++;
+            } else if (gateway.status && gateway.status !== 'DOWN') {
+                errorCount++;
+            }
+
+            document.getElementById('serviceCount').textContent = serviceCount;
+            document.getElementById('onlineCount').textContent = onlineCount;
+            document.getElementById('errorCount').textContent = errorCount;
+            document.getElementById('lastUpdate').textContent = lastUpdateTime ?
+                lastUpdateTime.toLocaleTimeString() : 'Never';
+        }
+
+        function renderServices() {
+            const grid = document.getElementById('servicesGrid');
+            grid.innerHTML = '';
+
+            // Render Gateway
+            if (gateway && gateway.status) {
+                const gatewayCard = createServiceCard('Gateway', gateway, true);
+                grid.appendChild(gatewayCard);
+            }
+
+            // Render Services
+            if (services && typeof services === 'object') {
+                Object.entries(services).forEach(([name, service]) => {
+                    const serviceCard = createServiceCard(name, service, false);
+                    grid.appendChild(serviceCard);
+                });
+            }
+
+            // Show empty state if no services
+            if (Object.keys(services).length === 0 && !gateway.status) {
+                showEmptyState();
+            }
+        }
+
+        function createServiceCard(name, service, isGateway = false) {
+            const card = document.createElement('div');
+
+            // Use the fixed status determination
+            const status = isGateway ? (service.status || 'UP') : determineServiceStatus(service);
+            const hasError = status === 'ERROR' || service.stderr;
+
+            card.className = `service-card ${isGateway ? 'gateway' : ''} ${hasError ? 'error' : ''}`;
+            const statusClass = hasError ? 'error' : status.toLowerCase();
+            const message = service.message || 'No message available';
+            const time = service.time || lastUpdateTime?.toLocaleString() || 'Unknown';
+
+            card.innerHTML = `
+                <div class="service-header">
+                    <div class="service-title">
+                        <div class="service-icon ${isGateway ? 'gateway' : hasError ? 'error' : 'microservice'}">
+                            <i class="fas ${isGateway ? 'fa-globe' : hasError ? 'fa-exclamation-triangle' : 'fa-cog'}"></i>
+                        </div>
+                        <span>${name.toUpperCase()}</span>
+                    </div>
+                    <div class="status-badge ${statusClass}">
+                        <div class="status-indicator"></div>
+                        <span>${status}</span>
+                    </div>
+                </div>
+
+                <div class="service-info">
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-info-circle"></i> Message
+                        </span>
+                        <span class="info-value" title="${service.message || 'No message'}">${service.message ? (service.message.length > 50 ? service.message.substring(0, 50) + '...' : service.message) : 'No message'}</span>
+                    </div>
+                    ${service.pid ? `
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-microchip"></i> Process ID
+                        </span>
+                        <span class="info-value">${service.pid}</span>
+                    </div>
+                    ` : ''}
+                    ${service.stdout !== undefined ? `
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-terminal"></i> STDOUT
+                        </span>
+                        <span class="info-value" title="${service.stdout || 'Empty'}">${service.stdout ? (service.stdout.length > 30 ? service.stdout.substring(0, 30) + '...' : service.stdout) : 'Empty'}</span>
+                    </div>
+                    ` : ''}
+                    ${service.stderr ? `
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-exclamation-triangle"></i> STDERR
+                        </span>
+                        <span class="info-value error-text" title="${service.stderr}">${service.stderr.length > 40 ? service.stderr.substring(0, 40) + '...' : service.stderr}</span>
+                    </div>
+                    ` : ''}
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-signal"></i> Status
+                        </span>
+                        <span class="info-value">${status}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="fas fa-clock"></i> Last Updated
+                        </span>
+                        <span class="info-value">${new Date(time).toLocaleTimeString()}</span>
+                    </div>
+                </div>
+
+                ${service.pid ? `
+                <div class="process-info">
+                    <div class="process-item">
+                        <i class="fas fa-play-circle"></i>
+                        <span>PID: <span class="process-value">${service.pid}</span></span>
+                    </div>
+                    <div class="process-item">
+                        <i class="fas fa-memory"></i>
+                        <span>Status: <span class="process-value">${status}</span></span>
+                    </div>
+                </div>
+                ` : ''}
+
+                ${!isGateway ? `
+                <div class="service-actions">
+                    <button class="btn btn-success btn-sm" onclick="controlService('${name}', 'start')" 
+                            ${status === 'UP' ? 'disabled' : ''}>
+                        <i class="fas fa-play"></i>
+                        Start
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="controlService('${name}', 'stop')"
+                            ${status === 'DOWN' ? 'disabled' : ''}>
+                        <i class="fas fa-stop"></i>
+                        Stop
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="controlService('${name}', 'restart')">
+                        <i class="fas fa-redo"></i>
+                        Restart
+                    </button>
+                </div>
+                ` : ''}
+
+                <div class="service-logs">
+                    <div class="log-header">
+                        <div class="log-title">
+                            <i class="fas fa-terminal"></i>
+                            <span>Service Logs</span>
+                        </div>
+                        <div class="log-controls">
+                            <button class="log-btn" onclick="clearServiceLogs('${name}')">
+                                <i class="fas fa-trash"></i> Clear
+                            </button>
+                            <button class="log-btn" onclick="downloadServiceLogs('${name}')">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                        </div>
+                    </div>
+                    <div class="log-content" id="logs-${name}">
+                        ${formatServiceLogs(service, name)}
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function formatServiceLogs(service, serviceName) {
+            let logsHtml = '';
+            const timestamp = new Date().toLocaleTimeString();
+
+            // Add current service data from API response
+            if (service.message) {
+                const logType = service.stderr ? 'error' : 'info';
+                logsHtml += `
+                    <div class="log-entry ${logType}">
+                        <span class="log-timestamp">${timestamp}</span>
+                        <span class="log-type ${logType}">${logType.toUpperCase()}</span>
+                        <div class="log-message">${highlightErrors(service.message)}</div>
+                    </div>
+                `;
+            }
+
+            // Add PID info if present
+            if (service.pid) {
+                logsHtml += `
+                    <div class="log-entry info">
+                        <span class="log-timestamp">${timestamp}</span>
+                        <span class="log-type info">PID</span>
+                        <div class="log-message">Process started with PID: ${service.pid}</div>
+                    </div>
+                `;
+            }
+
+            // Add stderr if present
+            if (service.stderr) {
+                logsHtml += `
+                    <div class="log-entry error">
+                        <span class="log-timestamp">${timestamp}</span>
+                        <span class="log-type stderr">STDERR</span>
+                        <div class="log-message">${highlightErrors(service.stderr)}</div>
+                    </div>
+                `;
+            }
+
+            // Add stdout if present
+            if (service.stdout !== undefined) {
+                logsHtml += `
+                    <div class="log-entry ${service.stdout ? 'success' : 'info'}">
+                        <span class="log-timestamp">${timestamp}</span>
+                        <span class="log-type stdout">STDOUT</span>
+                        <div class="log-message">${service.stdout || 'Empty output'}</div>
+                    </div>
+                `;
+            }
+
+            // Add historical logs if available
+            if (serviceLogs[serviceName]) {
+                serviceLogs[serviceName].forEach(log => {
+                    const logType = log.type || determineLogType(log);
+                    logsHtml += `
+                        <div class="log-entry ${logType}">
+                            <span class="log-timestamp">${log.timestamp || timestamp}</span>
+                            <span class="log-type ${logType}">${logType.toUpperCase()}</span>
+                            <div class="log-message">${highlightErrors(log.message || log)}</div>
+                        </div>
+                    `;
+                });
+            }
+
+            return logsHtml || `
+                <div class="log-entry default">
+                    <span class="log-timestamp">${timestamp}</span>
+                    <span class="log-type info">INFO</span>
+                    <div class="log-message">No logs available</div>
+                </div>
+            `;
+        }
+
+        function highlightErrors(text) {
+            if (!text) return '';
+
+            // Highlight common error patterns
+            return text
+                .replace(/(Error|ERROR|error)/g, '<span class="error-highlight">$1</span>')
+                .replace(/(ReferenceError|TypeError|SyntaxError|RangeError)/g, '<span class="error-highlight">$1</span>')
+                .replace(/(undefined|null|NaN)/g, '<span class="error-highlight">$1</span>')
+                .replace(/(at\s+[^\s]+:\d+:\d+)/g, '<span class="error-highlight">$1</span>')
+                .replace(/(line\s+\d+)/gi, '<span class="error-highlight">$1</span>');
+        }
+
+        function determineLogType(log) {
+            const text = (log.message || log || '').toLowerCase();
+
+            if (text.includes('error') || text.includes('failed') || text.includes('exception')) {
+                return 'error';
+            }
+            if (text.includes('warn') || text.includes('warning')) {
+                return 'warning';
+            }
+            if (text.includes('success') || text.includes('started') || text.includes('completed')) {
+                return 'success';
+            }
+            return 'info';
+        }
+
+        function updateServiceLogs(serviceName) {
+            const logContainer = document.getElementById(`logs-${serviceName}`);
+            if (logContainer && serviceLogs[serviceName]) {
+                const service = services[serviceName] || {};
+                logContainer.innerHTML = formatServiceLogs(service, serviceName);
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+        }
+
+        function clearServiceLogs(serviceName) {
+            if (serviceLogs[serviceName]) {
+                serviceLogs[serviceName] = [];
+                updateServiceLogs(serviceName);
+                showNotification(`Cleared logs for ${serviceName}`, 'info');
+            }
+        }
+
+        function clearAllLogs() {
+            serviceLogs = {};
+            renderServices();
+            showNotification('All logs cleared', 'info');
+        }
+
+        function downloadServiceLogs(serviceName) {
+            const service = services[serviceName] || {};
+            const logs = serviceLogs[serviceName] || [];
+
+            const logData = {
+                serviceName,
+                timestamp: new Date().toISOString(),
+                currentStatus: service,
+                logs: logs
+            };
+
+            const blob = new Blob([JSON.stringify(logData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${serviceName}-logs-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showNotification(`Logs exported for ${serviceName}`, 'success');
+        }
+
+        // Enhanced controlService function with better error handling
+        async function controlService(serviceName, action) {
+            const button = event.target;
+            const originalText = button.innerHTML;
+
+            try {
+                // Disable button and show loading
+                button.disabled = true;
+                button.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${action}ing...`;
+
+                showNotification(`${action.charAt(0).toUpperCase() + action.slice(1)}ing ${serviceName}...`, 'info');
+
+                const response = await fetch(`${GATEWAY_URL}/control/${action}/${serviceName}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                let result;
+                const contentType = response.headers.get('content-type');
+
+                if (contentType && contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    const text = await response.text();
+                    result = { message: text, status: response.status };
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${result.message || response.statusText}`);
+                }
+
+                console.log('✅ Control result:', result);
+
+                // Update the service data with the new result
+                if (result) {
+                    // Update the services object with the new data
+                    services[serviceName] = {
+                        ...services[serviceName],
+                        ...result,
+                        time: new Date().toISOString()
+                    };
+
+                    // Add the result to logs
+                    if (!serviceLogs[serviceName]) {
+                        serviceLogs[serviceName] = [];
+                    }
+
+                    serviceLogs[serviceName].push({
+                        timestamp: new Date().toLocaleTimeString(),
+                        message: `${action.toUpperCase()} command executed`,
+                        result: result,
+                        type: 'info'
+                    });
+
+                    // If there's stderr, add it as an error log
+                    if (result.stderr) {
+                        serviceLogs[serviceName].push({
+                            timestamp: new Date().toLocaleTimeString(),
+                            message: result.stderr,
+                            type: 'error'
+                        });
+                    }
+
+                    // If there's stdout, add it as a success log
+                    if (result.stdout) {
+                        serviceLogs[serviceName].push({
+                            timestamp: new Date().toLocaleTimeString(),
+                            message: result.stdout,
+                            type: 'success'
+                        });
+                    }
+
+                    // Re-render the services to show updated data
+                    renderServices();
+                    updateStats();
+                }
+
+                const message = result.message || result.status || `${action} completed`;
+                showNotification(`${serviceName.toUpperCase()}: ${message}`, result.stderr ? 'error' : 'success');
+
+            } catch (error) {
+                console.error('❌ Control request failed:', error);
+
+                // Add error to logs
+                if (!serviceLogs[serviceName]) {
+                    serviceLogs[serviceName] = [];
+                }
+
+                serviceLogs[serviceName].push({
+                    timestamp: new Date().toLocaleTimeString(),
+                    message: `${action.toUpperCase()} command failed: ${error.message}`,
+                    type: 'error'
+                });
+
+                showNotification(`Failed to ${action} ${serviceName}: ${error.message}`, 'error');
+            } finally {
+                // Re-enable button and restore text
+                button.disabled = false;
+                button.innerHTML = originalText;
+            }
+        }
+
+        function refreshServices() {
+            if (socket && socket.connected) {
+                socket.emit('refresh-services');
+                showNotification('Refreshing services via socket...', 'info');
+            } else {
+                // Fallback to HTTP
+                loadInitialData();
+                showNotification('Refreshing services via HTTP...', 'info');
+            }
+        }
+
+        async function startAllServices() {
+            const serviceNames = Object.keys(services);
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const serviceName of serviceNames) {
+                const status = determineServiceStatus(services[serviceName]);
+                if (status !== 'UP') {
+                    try {
+                        await controlService(serviceName, 'start');
+                        successCount++;
+                        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait between starts
+                    } catch (error) {
+                        errorCount++;
+                        console.error(`Failed to start ${serviceName}:`, error);
+                    }
+                }
+            }
+
+            showNotification(`Batch start completed: ${successCount} started, ${errorCount} failed`,
+                errorCount > 0 ? 'warning' : 'success');
+        }
+
+        async function stopAllServices() {
+            if (!confirm('Are you sure you want to stop all services?')) return;
+
+            const serviceNames = Object.keys(services);
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const serviceName of serviceNames) {
+                const status = determineServiceStatus(services[serviceName]);
+                if (status !== 'DOWN') {
+                    try {
+                        await controlService(serviceName, 'stop');
+                        successCount++;
+                        await new Promise(resolve => setTimeout(resolve, 500)); // Wait between stops
+                    } catch (error) {
+                        errorCount++;
+                        console.error(`Failed to stop ${serviceName}:`, error);
+                    }
+                }
+            }
+
+            showNotification(`Batch stop completed: ${successCount} stopped, ${errorCount} failed`,
+                errorCount > 0 ? 'warning' : 'success');
+        }
+
+        function toggleAutoRefresh() {
+            autoRefresh = !autoRefresh;
+            const icon = document.getElementById('autoRefreshIcon');
+            const text = document.getElementById('autoRefreshText');
+
+            if (autoRefresh) {
+                autoRefreshInterval = setInterval(refreshServices, 30000);
+                icon.className = 'fas fa-pause';
+                text.textContent = 'Auto-refresh ON';
+                showNotification('Auto-refresh enabled (30s)', 'success');
+            } else {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                    autoRefreshInterval = null;
+                }
+                icon.className = 'fas fa-clock';
+                text.textContent = 'Auto-refresh';
+                showNotification('Auto-refresh disabled', 'info');
+            }
+        }
+
+        function exportLogs() {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `gateway-logs-${timestamp}.json`;
+
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                gateway: gateway,
+                services: services,
+                logs: serviceLogs,
+                stats: {
+                    totalServices: Object.keys(services).length,
+                    onlineServices: Object.values(services).filter(s => determineServiceStatus(s) === 'UP').length,
+                    errorServices: Object.values(services).filter(s => {
+                        const status = determineServiceStatus(s);
+                        return status === 'ERROR' || status === 'DOWN';
+                    }).length
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showNotification('All logs exported successfully', 'success');
+        }
+
+        function showEmptyState() {
+            document.getElementById('emptyState').style.display = 'block';
+            document.getElementById('servicesGrid').style.display = 'none';
+        }
+
+        function hideEmptyState() {
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('servicesGrid').style.display = 'grid';
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+
+            notification.innerHTML = `
+                <div class="notification-header">
+                    <i class="fas ${icons[type] || icons.info}"></i>
+                    <span>${type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                </div>
+                <div class="notification-body">${message}</div>
+            `;
+
+            document.body.appendChild(notification);
+
+            setTimeout(() => notification.classList.add('show'), 100);
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (document.body.contains(notification)) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }, 5000);
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function () {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            if (socket) {
+                socket.disconnect();
+            }
+        });
+
+        // Add error boundary for uncaught errors
+        window.addEventListener('error', function (event) {
+            console.error('🔥 Uncaught error:', event.error);
+            showNotification('An unexpected error occurred. Check console for details.', 'error');
+        });
+
+        window.addEventListener('unhandledrejection', function (event) {
+            console.error('🔥 Unhandled promise rejection:', event.reason);
+            showNotification('An async operation failed. Check console for details.', 'error');
+        });
+
+
+
+        async function fetchUserInfo() {
+            const token = localStorage.getItem('token');
+
+
+
+            try {
+                const res = await fetch('/api/user/me', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (!res.ok) {
+                    throw new Error('Not authorized');
+                }
+
+                const user = await res.json();
+
+            } catch (err) {
+                console.error('Failed to fetch user:', err);
+                alert('Session expired. Please login again.');
+                window.location.href = '/auth';
+            }
+        }
+
+      async function logout() {
+  if (confirm('Are you sure you want to logout?')) {
+    await fetch('/auth/logout', {
+      method: 'POST',
+      credentials: 'include' // 🔑 send cookie
+    });
+
+    window.location.href = '/auth';
+  }
+}
+        // Fetch user on page load
+        fetchUserInfo();
+    </script>
+</body>
+
+</html>

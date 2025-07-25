@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Professional Web Terminal</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary-bg: #0d1117;
+      --secondary-bg: #161b22;
+      --terminal-bg: #0d1117;
+      --border-color: #30363d;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --accent-green: #39d353;
+      --accent-blue: #58a6ff;
+      --accent-yellow: #f1e05a;
+      --accent-red: #f85149;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      --glow: 0 0 20px rgba(57, 211, 83, 0.3);
+    }
+
+    body {
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Source Code Pro', monospace;
+      background: linear-gradient(135deg, var(--primary-bg) 0%, #1a1f2e 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .terminal-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: var(--secondary-bg);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+    }
+
+    .terminal-header {
+      background: linear-gradient(90deg, var(--secondary-bg) 0%, #21262d 100%);
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .terminal-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .terminal-title i {
+      color: var(--accent-green);
+      font-size: 1.2em;
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .control-btn {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .control-btn.close { background: var(--accent-red); }
+    .control-btn.minimize { background: var(--accent-yellow); }
+    .control-btn.maximize { background: var(--accent-green); }
+
+    .control-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    .terminal-stats {
+      display: flex;
+      gap: 15px;
+      font-size: 0.85em;
+      color: var(--text-secondary);
+    }
+
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .terminal-body {
+      display: flex;
+      flex-direction: column;
+      height: 600px;
+    }
+
+    #output {
+      flex: 1;
+      background: var(--terminal-bg);
+      padding: 20px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.5;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-color) transparent;
+    }
+
+    #output::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #output::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    #output::-webkit-scrollbar-thumb {
+      background: var(--border-color);
+      border-radius: 4px;
+    }
+
+    #output::-webkit-scrollbar-thumb:hover {
+      background: var(--text-secondary);
+    }
+
+    .command-line {
+      color: var(--accent-blue);
+      margin: 8px 0 4px 0;
+    }
+
+    .command-output {
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .error-output {
+      color: var(--accent-red);
+    }
+
+    .success-output {
+      color: var(--accent-green);
+    }
+
+    .warning-output {
+      color: var(--accent-yellow);
+    }
+
+    .input-container {
+      background: var(--secondary-bg);
+      border-top: 1px solid var(--border-color);
+      padding: 15px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .prompt {
+      color: var(--accent-green);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    #cmdInput {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      padding: 8px 0;
+    }
+
+    #cmdInput::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .input-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: var(--border-color);
+      border: none;
+      color: var(--text-secondary);
+      padding: 6px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+      background: var(--accent-green);
+      color: var(--terminal-bg);
+      transform: translateY(-1px);
+    }
+
+    .welcome-message {
+      color: var(--accent-green);
+      text-align: center;
+      padding: 20px;
+      border-bottom: 1px dashed var(--border-color);
+      margin-bottom: 20px;
+    }
+
+    .command-suggestions {
+      position: absolute;
+      bottom: 100%;
+      left: 0;
+      right: 0;
+      background: var(--secondary-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px 6px 0 0;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    .suggestion-item {
+      padding: 8px 15px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border-color);
+      transition: background 0.2s ease;
+    }
+
+    .suggestion-item:hover {
+      background: var(--border-color);
+    }
+
+    .suggestion-item:last-child {
+      border-bottom: none;
+    }
+
+    .timestamp {
+      color: var(--text-secondary);
+      font-size: 0.8em;
+      margin-right: 8px;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .terminal-body {
+        height: 500px;
+      }
+      
+      .terminal-stats {
+        display: none;
+      }
+      
+      .input-actions {
+        display: none;
+      }
+    }
+
+    /* Loading Animation */
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border-color);
+      border-radius: 50%;
+      border-top-color: var(--accent-green);
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Syntax Highlighting */
+    .syntax-keyword { color: var(--accent-blue); }
+    .syntax-string { color: var(--accent-green); }
+    .syntax-number { color: var(--accent-yellow); }
+    .syntax-comment { color: var(--text-secondary); }
+  </style>
+</head>
+<body>
+  <div class="terminal-container">
+    <!-- Terminal Header -->
+    <div class="terminal-header">
+      <div class="terminal-title">
+        <i class="fas fa-terminal"></i>
+        <span>Professional Web Terminal</span>
+      </div>
+      
+      <div class="terminal-stats">
+        <div class="stat-item">
+          <div class="status-indicator"></div>
+          <span>Connected</span>
+        </div>
+        <div class="stat-item">
+          <i class="fas fa-clock"></i>
+          <span id="uptime">00:00:00</span>
+        </div>
+        <div class="stat-item">
+          <i class="fas fa-history"></i>
+          <span id="commandCount">0 commands</span>
+        </div>
+      </div>
+
+      <div class="window-controls">
+        <div class="control-btn close"></div>
+        <div class="control-btn minimize"></div>
+        <div class="control-btn maximize"></div>
+      </div>
+    </div>
+
+    <!-- Terminal Body -->
+    <div class="terminal-body">
+      <div id="output">
+        <div class="welcome-message">
+          <i class="fas fa-rocket"></i> Welcome to Professional Web Terminal
+          <br>
+          <small>Type 'help' for available commands • Press Tab for suggestions • Use ↑↓ for history</small>
+        </div>
+      </div>
+
+      <!-- Input Container -->
+      <div class="input-container">
+        <span class="prompt">user@terminal:~$</span>
+        <input id="cmdInput" placeholder="Enter command..." autofocus autocomplete="off">
+        <div class="input-actions">
+          <button class="action-btn" onclick="clearTerminal()">
+            <i class="fas fa-trash"></i> Clear
+          </button>
+          <button class="action-btn" onclick="showHelp()">
+            <i class="fas fa-question"></i> Help
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Original Socket.IO functionality preserved
+    const socket = io('/');
+    const output = document.getElementById('output');
+    const input = document.getElementById('cmdInput');
+    
+    // Enhanced features
+    let commandHistory = [];
+    let historyIndex = -1;
+    let commandCount = 0;
+    let startTime = Date.now();
+
+    // Original keydown handler with enhancements
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        const cmd = input.value.trim();
+        if (cmd) {
+          // Add to history
+          commandHistory.unshift(cmd);
+          if (commandHistory.length > 100) commandHistory.pop();
+          historyIndex = -1;
+          
+          // Display command with timestamp
+          const timestamp = new Date().toLocaleTimeString();
+          output.innerHTML += `\n<span class="timestamp">[${timestamp}]</span><span class="command-line">user@terminal:~$ ${cmd}</span>\n`;
+          
+          // Original socket emit
+          socket.emit('run-command', cmd);
+          input.value = '';
+          commandCount++;
+          updateStats();
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (historyIndex < commandHistory.length - 1) {
+          historyIndex++;
+          input.value = commandHistory[historyIndex];
+        }
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (historyIndex > 0) {
+          historyIndex--;
+          input.value = commandHistory[historyIndex];
+        } else if (historyIndex === 0) {
+          historyIndex = -1;
+          input.value = '';
+        }
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        // Simple command suggestions
+        const suggestions = ['ls', 'cd', 'pwd', 'mkdir', 'rm', 'cp', 'mv', 'cat', 'grep', 'find', 'ps', 'top', 'kill', 'chmod', 'chown'];
+        const partial = input.value.toLowerCase();
+        const matches = suggestions.filter(cmd => cmd.startsWith(partial));
+        if (matches.length === 1) {
+          input.value = matches[0];
+        }
+      }
+    });
+
+    // Original socket handler with enhancements
+    socket.on('output', data => {
+      // Enhanced output formatting
+      let formattedData = data;
+      
+      // Color coding for different types of output
+      if (data.includes('error') || data.includes('Error') || data.includes('ERROR')) {
+        formattedData = `<span class="error-output">${data}</span>`;
+      } else if (data.includes('warning') || data.includes('Warning') || data.includes('WARN')) {
+        formattedData = `<span class="warning-output">${data}</span>`;
+      } else if (data.includes('success') || data.includes('Success') || data.includes('OK')) {
+        formattedData = `<span class="success-output">${data}</span>`;
+      }
+      
+      output.innerHTML += formattedData;
+      output.scrollTop = output.scrollHeight;
+    });
+
+    // Enhanced utility functions
+    function clearTerminal() {
+      output.innerHTML = `
+        <div class="welcome-message">
+          <i class="fas fa-rocket"></i> Terminal Cleared
+          <br>
+          <small>Ready for new commands</small>
+        </div>
+      `;
+    }
+
+    function showHelp() {
+      const helpText = `
+<span class="command-line">Available Commands:</span>
+<span class="success-output">• ls, dir          - List directory contents</span>
+<span class="success-output">• cd [path]        - Change directory</span>
+<span class="success-output">• pwd              - Print working directory</span>
+<span class="success-output">• mkdir [name]     - Create directory</span>
+<span class="success-output">• rm [file]        - Remove file</span>
+<span class="success-output">• cat [file]       - Display file contents</span>
+<span class="success-output">• ps               - List running processes</span>
+<span class="success-output">• clear            - Clear terminal</span>
+
+<span class="command-line">Keyboard Shortcuts:</span>
+<span class="accent-blue">• ↑↓ arrows        - Navigate command history</span>
+<span class="accent-blue">• Tab              - Auto-complete commands</span>
+<span class="accent-blue">• Ctrl+C           - Cancel current command</span>
+      `;
+      output.innerHTML += helpText + '\n';
+      output.scrollTop = output.scrollHeight;
+    }
+
+    function updateStats() {
+      document.getElementById('commandCount').textContent = `${commandCount} commands`;
+    }
+
+    function updateUptime() {
+      const elapsed = Date.now() - startTime;
+      const hours = Math.floor(elapsed / 3600000);
+      const minutes = Math.floor((elapsed % 3600000) / 60000);
+      const seconds = Math.floor((elapsed % 60000) / 1000);
+      
+      document.getElementById('uptime').textContent = 
+        `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    // Update uptime every second
+    setInterval(updateUptime, 1000);
+
+    // Focus input when clicking anywhere in terminal
+    document.addEventListener('click', () => {
+      input.focus();
+    });
+
+    // Handle window controls
+    document.querySelector('.control-btn.close').addEventListener('click', () => {
+      if (confirm('Close terminal?')) {
+        window.close();
+      }
+    });
+
+    document.querySelector('.control-btn.minimize').addEventListener('click', () => {
+      document.body.style.transform = 'scale(0.8)';
+      setTimeout(() => {
+        document.body.style.transform = 'scale(1)';
+      }, 200);
+    });
+
+    document.querySelector('.control-btn.maximize').addEventListener('click', () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        document.documentElement.requestFullscreen();
+      }
+    });
+
+ async function fetchUserInfo() {
+
+    
+
+    try {
+      const res = await fetch('/api/user/me', {
+        method: 'GET',
+        credentials: 'include' 
+      });
+
+      if (!res.ok) {
+        throw new Error('Not authorized');
+      }
+
+      const user = await res.json();
+    //   document.getElementById('username').textContent = user.username;
+    //   document.getElementById('role').textContent = user.role;
+    } catch (err) {
+      console.error('Failed to fetch user:', err);
+      alert('Session expired. Please login again.');
+      window.location.href = '/auth';
+    }
+  }
+  fetchUserInfo();
+
+    async function logout() {
+  if (confirm('Are you sure you want to logout?')) {
+    await fetch('/auth/logout', {
+      method: 'POST',
+      credentials: 'include' // 🔑 send cookie
+    });
+
+    window.location.href = '/auth.html';
+  }
+}
+  </script>
+</body>
+</html>

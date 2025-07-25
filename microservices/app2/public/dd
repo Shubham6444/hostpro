@@ -1,0 +1,11 @@
+
+sudo systemctl start autodeploy
+sudo systemctl stop autodeploy
+sudo systemctl disable autodeploy
+
+sudo rm /etc/systemd/system/autodeploy.service
+sudo nano /etc/systemd/system/autodeploy.service
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+
+sudo chown -R $USER:$USER /opt/autodeploy

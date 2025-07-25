@@ -1,0 +1,271 @@
+const express = require("express");
+const router = express.Router();
+const { v4: uuidv4 } = require("uuid");
+const { CONFIG } = require("../config/db");
+const fs = require("fs-extra");
+const path = require("path");
+const { exec } = require("child_process");
+const util = require("util");
+const execAsync = util.promisify(exec);
+const Docker = require("dockerode");
+const docker = new Docker();
+const { Mutex } = require("async-mutex");
+const createLock = new Mutex();
+
+
+const net = require("net");
+
+
+async function isPortFreeTCP(port) {
+  return new Promise((resolve) => {
+    const server = net.createServer()
+      .once("error", () => resolve(false))
+      .once("listening", () => {
+        server.close();
+        resolve(true);
+      })
+      .listen(port, "0.0.0.0");
+  });
+}
+
+async function isPortFreeInDocker(port) {
+  const containers = await docker.listContainers({ all: true });
+  for (const container of containers) {
+    for (const portBinding of container.Ports || []) {
+      if (portBinding.PublicPort === port) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+async function isPortFree(port) {
+  const [tcpFree, dockerFree] = await Promise.all([
+    isPortFreeTCP(port),
+    isPortFreeInDocker(port)
+  ]);
+  return tcpFree && dockerFree;
+}
+
+
+
+class VMManager {
+  static async getNextAvailablePorts() {
+    let sshPort = CONFIG.SSH_PORT_START;
+    let httpPort = CONFIG.HTTP_PORT_START;
+
+    while (!(await isPortFree(sshPort))) sshPort++;
+    while (!(await isPortFree(httpPort))) httpPort++;
+
+    return { sshPort, httpPort };
+  }
+
+  static async loadVMData() {
+    try {
+      await fs.ensureFile(CONFIG.DATA_FILE);
+      const data = await fs.readJson(CONFIG.DATA_FILE);
+      return data || {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  static async saveVMData(data) {
+    await fs.ensureDir(path.dirname(CONFIG.DATA_FILE));
+    await fs.writeJson(CONFIG.DATA_FILE, data, { spaces: 2 });
+  }
+
+  static async createContainer(userId, password) {
+    const release = await createLock.acquire();
+    try {
+      const { sshPort, httpPort } = await this.getNextAvailablePorts();
+
+      const containers = await docker.listContainers({ all: true });
+      for (const container of containers) {
+        for (const port of container.Ports || []) {
+          if ([sshPort, httpPort].includes(port.PublicPort)) {
+            throw new Error(`Port ${port.PublicPort} is already in use by Docker.`);
+          }
+        }
+      }
+
+      return await this._createContainerInternal(userId, password, sshPort, httpPort);
+    } finally {
+      release();
+    }
+  }
+
+  static async _createContainerInternal(userId, password, sshPort, httpPort) {
+    const containerName = `vm_${userId}`;
+    const actualPassword = password?.trim() || "defaultpass123";
+
+    console.log(`Creating container ${containerName} with SSH port ${sshPort}`);
+
+    const userVolumePath = path.resolve("/users/public/users", userId);
+    // const userVolumePath = path.resolve("/home/ubuntu/vm_users", userId);
+
+    const userhostdata = path.resolve(__dirname, "..", "Hostedfiles", userId);
+
+    await fs.ensureDir(`${userVolumePath}/etc/letsencrypt`);
+    await fs.ensureDir(`${userVolumePath}/var/lib/letsencrypt`);
+    await fs.ensureDir(`${userVolumePath}/var/www/html`);
+    await execAsync(`chown -R root:root ${userVolumePath}`);
+    await execAsync(`chmod -R 755 ${userVolumePath}`);
+    await execAsync(`chmod -R 755 ${userVolumePath}/var/www/html`);
+
+    try {
+      const container = await docker.createContainer({
+        Image: "ubuntu:22.04",
+        name: containerName,
+        Cmd: [
+          "/bin/bash",
+          "-c",
+          `
+            apt-get update && \
+            DEBIAN_FRONTEND=noninteractive apt-get install -y openssh-server sudo nginx curl wget git vim nano htop systemd && \
+            mkdir -p /var/run/sshd && \
+            echo 'Port 22' > /etc/ssh/sshd_config && \
+            echo 'PermitRootLogin yes' >> /etc/ssh/sshd_config && \
+            echo 'PasswordAuthentication yes' >> /etc/ssh/sshd_config && \
+            echo 'PubkeyAuthentication yes' >> /etc/ssh/sshd_config && \
+            ssh-keygen -A && \
+            echo 'root:${actualPassword}' | chpasswd && \
+            echo 'root ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
+             [-f /var/www/html/index.html ] || echo '<h1>Welcome to your VM!</h1><p>SSH Port: ${sshPort}</p>' > /var/www/html/index.html && \
+            service ssh start && \
+            service nginx start && \
+            tail -f /dev/null
+          `,
+        ],
+        ExposedPorts: {
+          "22/tcp": {},
+          "80/tcp": {},
+          "3389/tcp": {},
+        },
+        HostConfig: {
+          PortBindings:{
+            "22/tcp": [{ HostPort: sshPort.toString() }],
+            "80/tcp": [{ HostPort: httpPort.toString() }],
+          },
+          Binds: [
+            `${userVolumePath}/etc/letsencrypt:/etc/letsencrypt`,
+            `${userVolumePath}/var/lib/letsencrypt:/var/lib/letsencrypt`,
+            // `${userVolumePath}/var/www/html:/var/www/html`,
+            `${userhostdata}:/app`,
+            `${userhostdata}/html/:/var/www/html`,
+            
+          ],
+          Memory: 512 * 1024 * 1024,
+          CpuShares: 512,
+        },
+        Tty: true,
+        OpenStdin: true,
+      });
+
+      await container.start();
+
+      const data = await this.loadVMData();
+      data[userId] = { sshPort, httpPort, containerId: container.id };
+      await this.saveVMData(data);
+      try {
+        await execAsync("sudo nginx -t &&sudo systemctl reload nginx");
+        console.log("✅ Nginx reloaded successfully.");
+      } catch (err) {
+        console.error("❌ Failed to reload Nginx:", err.stderr || err.message);
+      }
+      return container;
+    } catch (error) {
+      console.error("Container creation error:", error);
+      throw new Error(`Failed to create container: ${error.message}`);
+    }
+  }
+// ssl_certificate /etc/letsencrypt/live/${CONFIG.DOMAIN}-0001/fullchain.pem;
+    // ssl_certificate_key /etc/letsencrypt/live/${CONFIG.DOMAIN}-0001/privkey.pem;
+// ssl_protocols TLSv1.2 TLSv1.3;
+    // ssl_ciphers HIGH:!aNULL:!MD5;
+    // listen 443 ssl http2;
+
+  static async generateNginxConfig(userId, httpPort, subdomain) {
+    const configContent = `
+server {
+    listen 443;
+    server_name ${subdomain}.${CONFIG.DOMAIN};
+    
+    
+    location / {
+        proxy_pass http://localhost:${httpPort};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+}`;
+
+    const configPath = path.join(CONFIG.NGINX_CONFIG_PATH, `${subdomain}.${CONFIG.DOMAIN}`);
+    const enabledPath = path.join(CONFIG.NGINX_ENABLED_PATH, `${subdomain}.${CONFIG.DOMAIN}`);
+
+    try {
+      await fs.writeFile(configPath, configContent);
+      try {
+        await fs.symlink(configPath, enabledPath);
+      } catch (error) {
+        if (error.code !== "EEXIST") throw error;
+      }
+
+      await execAsync("nginx -t");
+      await execAsync("systemctl reload nginx");
+    } catch (error) {
+      console.error("Nginx config generation error:", error);
+      throw new Error("Failed to generate Nginx configuration");
+    }
+  }
+
+  static async removeNginxConfig(subdomain) {
+    const configPath = path.join(CONFIG.NGINX_CONFIG_PATH, `${subdomain}.${CONFIG.DOMAIN}`);
+    const enabledPath = path.join(CONFIG.NGINX_ENABLED_PATH, `${subdomain}.${CONFIG.DOMAIN}`);
+
+    try {
+      await fs.remove(enabledPath);
+      await fs.remove(configPath);
+      await execAsync("systemctl reload nginx");
+    } catch (error) {
+      console.error("Nginx config removal error:", error);
+    }
+  }
+
+  static async fixContainerPassword(containerId, password) {
+    try {
+      const container = docker.getContainer(containerId);
+      const actualPassword = password?.trim() || "defaultpass123";
+
+      const commands = [
+        `echo 'root:${actualPassword}' | chpasswd`,
+        "usermod -aG sudo root",
+        "grep -q 'root ALL=(ALL) NOPASSWD:ALL' /etc/sudoers || echo 'root ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers",
+        "service ssh restart",
+      ];
+
+      for (const cmd of commands) {
+        try {
+          const exec = await container.exec({
+            Cmd: ["/bin/bash", "-c", cmd],
+            AttachStdout: true,
+            AttachStderr: true,
+          });
+          await exec.start();
+        } catch (error) {
+          console.error(`Error executing: ${cmd}`, error);
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Password fix error:", error);
+      return false;
+    }
+  }
+}
+
+module.exports = VMManager;

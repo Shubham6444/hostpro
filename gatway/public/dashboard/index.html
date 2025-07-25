@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard - Services Portal</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #667eea;
+            --primary-dark: #5a67d8;
+            --secondary-color: #764ba2;
+            --success-color: #48bb78;
+            --warning-color: #ed8936;
+            --error-color: #f56565;
+            --info-color: #4299e1;
+            --text-primary: #2d3748;
+            --text-secondary: #718096;
+            --text-light: #a0aec0;
+            --bg-primary: #f7fafc;
+            --bg-secondary: #ffffff;
+            --border-color: #e2e8f0;
+            --sidebar-width: 280px;
+            --header-height: 70px;
+            --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Layout Structure */
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-secondary);
+            box-shadow: var(--shadow-lg);
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .sidebar-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .sidebar-brand i {
+            font-size: 1.5rem;
+        }
+
+        .sidebar-nav {
+            padding: 20px 0;
+        }
+
+        .nav-section {
+            margin-bottom: 30px;
+        }
+
+        .nav-section-title {
+            padding: 0 20px 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+        }
+
+        .nav-item {
+            margin: 2px 10px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .nav-link:hover {
+            background: var(--bg-primary);
+            color: var(--primary-color);
+            transform: translateX(4px);
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .nav-link i {
+            width: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.expanded {
+            margin-left: 0;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            height: var(--header-height);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .sidebar-toggle {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--bg-primary);
+            color: var(--primary-color);
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .breadcrumb-separator {
+            color: var(--text-light);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-badge {
+            background: linear-gradient(135deg, var(--success-color), #38a169);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: var(--bg-primary);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .user-menu:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            min-width: 200px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+            z-index: 1000;
+            margin-top: 8px;
+        }
+
+        .dropdown.open .dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .dropdown-item:hover {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 8px 0;
+        }
+
+        /* Content Area */
+        .content {
+            padding: 30px;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+        }
+
+        /* Service Cards Grid */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .service-card {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .service-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .service-card.active {
+            border-color: var(--success-color);
+            background: linear-gradient(135deg, rgba(72, 187, 120, 0.05), rgba(72, 187, 120, 0.02));
+        }
+
+        .service-card.inactive {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .service-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .service-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+        }
+
+        .service-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .service-status.active {
+            background: rgba(72, 187, 120, 0.1);
+            color: var(--success-color);
+        }
+
+        .service-status.inactive {
+            background: rgba(245, 101, 101, 0.1);
+            color: var(--error-color);
+        }
+
+        .service-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .service-description {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .service-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .service-stat {
+            text-align: center;
+        }
+
+        .service-stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .service-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .service-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.875rem;
+        }
+
+        .btn.primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            color: white;
+        }
+
+        .btn.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn.success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn.warning {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .btn.secondary {
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Profile Section */
+        .profile-section {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 30px;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .profile-info h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .profile-info p {
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+
+        .profile-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .profile-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .profile-badge.role {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--primary-color);
+        }
+
+        .profile-badge.subscription {
+            background: rgba(72, 187, 120, 0.1);
+            color: var(--success-color);
+        }
+
+        .profile-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .profile-stat {
+            text-align: center;
+            padding: 15px;
+            background: var(--bg-primary);
+            border-radius: 8px;
+        }
+
+        .profile-stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .profile-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .quick-action {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .quick-action:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .quick-action-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+            margin: 0 auto 10px;
+        }
+
+        .quick-action-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 5px;
+        }
+
+        .quick-action-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .header {
+                padding: 0 20px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .services-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .profile-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .quick-actions {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+
+            .user-menu span {
+                display: none;
+            }
+
+            .user-badge {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <i class="fas fa-rocket"></i>
+                    <span>Services Portal</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Dashboard</div>
+                    <div class="nav-item">
+                        <div class="nav-link active" data-page="overview">
+                            <i class="fas fa-home"></i>
+                            <span>Overview</span>
+                        </div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-link" data-page="profile">
+                            <i class="fas fa-user"></i>
+                            <span>My Profile</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Services</div>
+                    <div class="nav-item">
+                        <div class="nav-link" data-page="services">
+                            <i class="fas fa-th-large"></i>
+                            <span>All Services</span>
+                        </div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-link" data-page="api-docs">
+                            <i class="fas fa-book"></i>
+                            <span>API Documentation</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Account</div>
+                    <div class="nav-item">
+                        <div class="nav-link" data-page="billing">
+                            <i class="fas fa-credit-card"></i>
+                            <span>Billing</span>
+                        </div>
+                    </div>
+                    <div class="nav-item">
+                        <div class="nav-link" data-page="usage">
+                            <i class="fas fa-chart-bar"></i>
+                            <span>Usage Analytics</span>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content" id="mainContent">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <button class="sidebar-toggle" id="sidebarToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="breadcrumb">
+                        <span>Dashboard</span>
+                        <span class="breadcrumb-separator">/</span>
+                        <span id="currentPage">Overview</span>
+                    </div>
+                </div>
+                
+                <div class="header-right">
+                    <div class="user-badge">
+                        <i class="fas fa-star"></i>
+                        User
+                    </div>
+                    <div class="dropdown">
+                        <div class="user-menu" id="userMenu">
+                            <div class="user-avatar" id="userAvatar">U</div>
+                            <span id="userName">User</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="dropdown-menu" id="userDropdown">
+                            <div class="dropdown-item" onclick="navigateToPage('profile')">
+                                <i class="fas fa-user"></i>
+                                <span>Profile</span>
+                            </div>
+                            <div class="dropdown-item" onclick="navigateToPage('billing')">
+                                <i class="fas fa-credit-card"></i>
+                                <span>Billing</span>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <div class="dropdown-item" onclick="logout()">
+                                <i class="fas fa-sign-out-alt"></i>
+                                <span>Logout</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content -->
+            <div class="content">
+                <!-- Overview Page -->
+                <div id="overviewPage" class="page-content">
+                    <h1 class="page-title">Welcome Back!</h1>
+                    <p class="page-subtitle">Access all your services and manage your account from here.</p>
+
+                    <!-- Quick Actions -->
+                    <div class="quick-actions">
+                        <div class="quick-action" onclick="navigateToPage('services')">
+                            <div class="quick-action-icon" style="background: var(--primary-color);">
+                                <i class="fas fa-rocket"></i>
+                            </div>
+                            <div class="quick-action-title">Browse Services</div>
+                            <div class="quick-action-desc">Explore available services</div>
+                        </div>
+                        <div class="quick-action" onclick="navigateToPage('api-docs')">
+                            <div class="quick-action-icon" style="background: var(--info-color);">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <div class="quick-action-title">API Docs</div>
+                            <div class="quick-action-desc">View documentation</div>
+                        </div>
+                        <div class="quick-action" onclick="navigateToPage('usage')">
+                            <div class="quick-action-icon" style="background: var(--success-color);">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="quick-action-title">Usage Stats</div>
+                            <div class="quick-action-desc">Monitor your usage</div>
+                        </div>
+                        <div class="quick-action" onclick="navigateToPage('billing')">
+                            <div class="quick-action-icon" style="background: var(--warning-color);">
+                                <i class="fas fa-credit-card"></i>
+                            </div>
+                            <div class="quick-action-title">Billing</div>
+                            <div class="quick-action-desc">Manage payments</div>
+                        </div>
+                    </div>
+
+                    <!-- Active Services Preview -->
+                    <div class="services-grid" id="activeServicesPreview">
+                        <!-- Active services will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Profile Page -->
+                <div id="profilePage" class="page-content" style="display: none;">
+                    <h1 class="page-title">My Profile</h1>
+                    <p class="page-subtitle">Manage your account information and preferences.</p>
+
+                    <div class="profile-section">
+                        <div class="profile-header">
+                            <div class="profile-avatar" id="profileAvatar">U</div>
+                            <div class="profile-info">
+                                <h2 id="profileName">User Name</h2>
+                                <p id="profileEmail">user@example.com</p>
+                                <div class="profile-badges">
+                                    <span class="profile-badge role" id="profileRole">User</span>
+                                    <span class="profile-badge subscription" id="profileSubscription">Free Plan</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="profile-stats">
+                            <div class="profile-stat">
+                                <div class="profile-stat-value" id="profileApiCalls">0</div>
+                                <div class="profile-stat-label">API Calls</div>
+                            </div>
+                            <div class="profile-stat">
+                                <div class="profile-stat-value" id="profileServices">0</div>
+                                <div class="profile-stat-label">Active Services</div>
+                            </div>
+                            <div class="profile-stat">
+                                <div class="profile-stat-value" id="profileUptime">99.9%</div>
+                                <div class="profile-stat-label">Uptime</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Services Page -->
+                <div id="servicesPage" class="page-content" style="display: none;">
+                    <h1 class="page-title">Available Services</h1>
+                    <p class="page-subtitle">Explore and access all available services for your account.</p>
+
+                    <div class="services-grid" id="allServicesGrid">
+                        <!-- All services will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- API Documentation Page -->
+                <div id="api-docsPage" class="page-content" style="display: none;">
+                    <h1 class="page-title">API Documentation</h1>
+                    <p class="page-subtitle">Complete documentation for all available APIs and services.</p>
+
+                    <div class="services-grid">
+                        <div class="service-card">
+                            <div class="service-header">
+                                <div class="service-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                                    <i class="fas fa-shield-alt"></i>
+                                </div>
+                                <span class="service-status active">Available</span>
+                            </div>
+                            <h3 class="service-title">OTP Service API</h3>
+                            <p class="service-description">Send and verify OTP codes via SMS and email with high delivery rates.</p>
+                            <div class="service-actions">
+                                <button class="btn primary" onclick="openServiceDashboard('otp-service')">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    View Docs
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="service-card">
+                            <div class="service-header">
+                                <div class="service-icon" style="background: linear-gradient(135deg, #48bb78, #38a169);">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <span class="service-status active">Available</span>
+                            </div>
+                            <h3 class="service-title">Email API</h3>
+                            <p class="service-description">Reliable email delivery service with templates and analytics.</p>
+                            <div class="service-actions">
+                                <button class="btn primary" onclick="openServiceDashboard('email-api')">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    View Docs
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="service-card">
+                            <div class="service-header">
+                                <div class="service-icon" style="background: linear-gradient(135deg, #ed8936, #dd6b20);">
+                                    <i class="fas fa-sms"></i>
+                                </div>
+                                <span class="service-status active">Available</span>
+                            </div>
+                            <h3 class="service-title">SMS Gateway</h3>
+                            <p class="service-description">Global SMS delivery with real-time status updates and delivery reports.</p>
+                            <div class="service-actions">
+                                <button class="btn primary" onclick="openServiceDashboard('sms-gateway')">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    View Docs
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Billing Page -->
+                <div id="billingPage" class="page-content" style="display: none;">
+                    <h1 class="page-title">Billing & Subscription</h1>
+                    <p class="page-subtitle">Manage your subscription and payment methods.</p>
+
+                    <div class="profile-section">
+                        <h3 style="margin-bottom: 20px;">Current Plan</h3>
+                        <div class="profile-stats">
+                            <div class="profile-stat">
+                                <div class="profile-stat-value">Free</div>
+                                <div class="profile-stat-label">Current Plan</div>
+                            </div>
+                            <div class="profile-stat">
+                                <div class="profile-stat-value">$0</div>
+                                <div class="profile-stat-label">Monthly Cost</div>
+                            </div>
+                            <div class="profile-stat">
+                                <div class="profile-stat-value">1,000</div>
+                                <div class="profile-stat-label">API Calls/Month</div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 20px;">
+                            <button class="btn primary">
+                                <i class="fas fa-arrow-up"></i>
+                                Upgrade Plan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Usage Analytics Page -->
+                <div id="usagePage" class="page-content" style="display: none;">
+                    <h1 class="page-title">Usage Analytics</h1>
+                    <p class="page-subtitle">Monitor your API usage and performance metrics.</p>
+
+                    <div class="profile-section">
+                        <h3 style="margin-bottom: 20px;">This Month's Usage</h3>
+                        <div class="profile-stats">
+                            <div class="profile-stat">
+                                <div class="profile-stat-value" id="monthlyApiCalls">0</div>
+                                <div class="profile-stat-label">API Calls</div>
+                            </div>
+                            <div class="profile-stat">
+                                <div class="profile-stat-value" id="monthlyErrors">0</div>
+                                <div class="profile-stat-label">Errors</div>
+                            </div>
+                            <div class="profile-stat">
+                                <div class="profile-stat-value" id="avgResponseTime">0ms</div>
+                                <div class="profile-stat-label">Avg Response</div>
+                            </div>
+                            <div class="profile-stat">
+                                <div class="profile-stat-value" id="successRate">0%</div>
+                                <div class="profile-stat-label">Success Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Global variables
+        let currentUser = null;
+        const API_BASE = '/api/user';
+
+        // Available services with their details
+        const availableServices = [
+            {
+                id: 'otp-service',
+                name: 'OTP Service',
+                icon: 'fas fa-shield-alt',
+                description: 'Send and verify OTP codes via SMS and email with high delivery rates.',
+                status: 'active',
+                apiCalls: 1250,
+                successRate: 99.8,
+                dashboardUrl: '/otp-dashboard.html'
+            },
+            {
+                id: 'email-api',
+                name: 'Email API',
+                icon: 'fas fa-envelope',
+                description: 'Reliable email delivery service with templates and analytics.',
+                status: 'active',
+                apiCalls: 850,
+                successRate: 99.5,
+                dashboardUrl: '/email-dashboard.html'
+            },
+            {
+                id: 'sms-gateway',
+                name: 'SMS Gateway',
+                icon: 'fas fa-sms',
+                description: 'Global SMS delivery with real-time status updates and delivery reports.',
+                status: 'active',
+                apiCalls: 420,
+                successRate: 98.9,
+                dashboardUrl: '/sms-dashboard.html'
+            },
+            {
+                id: 'whatsapp-api',
+                name: 'WhatsApp API',
+                icon: 'fab fa-whatsapp',
+                description: 'Send WhatsApp messages and manage conversations programmatically.',
+                status: 'inactive',
+                apiCalls: 0,
+                successRate: 0,
+                dashboardUrl: '/whatsapp-dashboard.html'
+            },
+            {
+                id: 'payment-gateway',
+                name: 'Payment Gateway',
+                icon: 'fas fa-credit-card',
+                description: 'Secure payment processing with multiple payment methods support.',
+                status: 'inactive',
+                apiCalls: 0,
+                successRate: 0,
+                dashboardUrl: '/payment-dashboard.html'
+            },
+            {
+                id: 'file-storage',
+                name: 'File Storage',
+                icon: 'fas fa-cloud-upload-alt',
+                description: 'Scalable cloud storage solution with CDN integration.',
+                status: 'inactive',
+                apiCalls: 0,
+                successRate: 0,
+                dashboardUrl: '/storage-dashboard.html'
+            }
+        ];
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            loadUserData();
+            setupEventListeners();
+            fetchUserInfo();
+        });
+
+        function initializeDashboard() {
+            // Set up sidebar toggle
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+
+            sidebarToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('open');
+                mainContent.classList.toggle('expanded');
+            });
+
+            // Set up navigation
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = this.getAttribute('data-page');
+                    navigateToPage(page);
+                });
+            });
+
+            // Set up user dropdown
+            const userMenu = document.getElementById('userMenu');
+            
+            userMenu.addEventListener('click', function() {
+                userMenu.parentElement.classList.toggle('open');
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!userMenu.contains(e.target)) {
+                    userMenu.parentElement.classList.remove('open');
+                }
+            });
+
+            // Load services
+            loadServices();
+        }
+
+        function setupEventListeners() {
+            // Close sidebar on mobile when clicking outside
+            document.addEventListener('click', function(e) {
+                const sidebar = document.getElementById('sidebar');
+                const sidebarToggle = document.getElementById('sidebarToggle');
+                
+                if (window.innerWidth <= 768 && 
+                    !sidebar.contains(e.target) && 
+                    !sidebarToggle.contains(e.target) &&
+                    sidebar.classList.contains('open')) {
+                    sidebar.classList.remove('open');
+                }
+            });
+        }
+
+        function navigateToPage(page) {
+            // Update active nav link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelector(`[data-page="${page}"]`).classList.add('active');
+
+            // Update breadcrumb
+            const pageNames = {
+                'overview': 'Overview',
+                'profile': 'My Profile',
+                'services': 'All Services',
+                'api-docs': 'API Documentation',
+                'billing': 'Billing',
+                'usage': 'Usage Analytics'
+            };
+            document.getElementById('currentPage').textContent = pageNames[page] || page;
+
+            // Show/hide page content
+            document.querySelectorAll('.page-content').forEach(content => {
+                content.style.display = 'none';
+            });
+            
+            const targetPage = document.getElementById(`${page}Page`);
+            if (targetPage) {
+                targetPage.style.display = 'block';
+            }
+
+            // Close sidebar on mobile after navigation
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+        }
+
+        function loadServices() {
+            // Load active services preview on overview page
+            const activeServicesPreview = document.getElementById('activeServicesPreview');
+            const allServicesGrid = document.getElementById('allServicesGrid');
+            
+            // Clear existing content
+            activeServicesPreview.innerHTML = '';
+            allServicesGrid.innerHTML = '';
+
+            // Filter active services for preview
+            const activeServices = availableServices.filter(service => service.status === 'active');
+            
+            // Load active services preview (max 3)
+            activeServices.slice(0, 3).forEach(service => {
+                const serviceCard = createServiceCard(service);
+                activeServicesPreview.appendChild(serviceCard);
+            });
+
+            // Load all services
+            availableServices.forEach(service => {
+                const serviceCard = createServiceCard(service);
+                allServicesGrid.appendChild(serviceCard);
+            });
+        }
+
+        function createServiceCard(service) {
+            const card = document.createElement('div');
+            card.className = `service-card ${service.status}`;
+            
+            const iconColors = {
+                'otp-service': 'linear-gradient(135deg, #667eea, #764ba2)',
+                'email-api': 'linear-gradient(135deg, #48bb78, #38a169)',
+                'sms-gateway': 'linear-gradient(135deg, #ed8936, #dd6b20)',
+                'whatsapp-api': 'linear-gradient(135deg, #25d366, #128c7e)',
+                'payment-gateway': 'linear-gradient(135deg, #f56565, #e53e3e)',
+                'file-storage': 'linear-gradient(135deg, #4299e1, #3182ce)'
+            };
+
+            card.innerHTML = `
+                <div class="service-header">
+                    <div class="service-icon" style="background: ${iconColors[service.id] || 'linear-gradient(135deg, #667eea, #764ba2)'};">
+                        <i class="${service.icon}"></i>
+                    </div>
+                    <span class="service-status ${service.status}">${service.status}</span>
+                </div>
+                <h3 class="service-title">${service.name}</h3>
+                <p class="service-description">${service.description}</p>
+                <div class="service-stats">
+                    <div class="service-stat">
+                        <div class="service-stat-value">${service.apiCalls.toLocaleString()}</div>
+                        <div class="service-stat-label">API Calls</div>
+                    </div>
+                    <div class="service-stat">
+                        <div class="service-stat-value">${service.successRate}%</div>
+                        <div class="service-stat-label">Success Rate</div>
+                    </div>
+                </div>
+                <div class="service-actions">
+                    ${service.status === 'active' ? 
+                        `<button class="btn primary" onclick="openServiceDashboard('${service.id}')">
+                            <i class="fas fa-external-link-alt"></i>
+                            Open Dashboard
+                        </button>` :
+                        `<button class="btn secondary" disabled>
+                            <i class="fas fa-lock"></i>
+                            Not Available
+                        </button>`
+                    }
+                </div>
+            `;
+
+            return card;
+        }
+
+        function openServiceDashboard(serviceId) {
+            const service = availableServices.find(s => s.id === serviceId);
+            if (service && service.status === 'active') {
+                // Open service dashboard in new tab
+                window.open(service.dashboardUrl, '_blank');
+            }
+        }
+
+        async function loadUserData() {
+            try {
+                // Mock user data for demo
+                const userData = {
+                    username: 'john_doe',
+                    email: 'john@example.com',
+                    role: 'user',
+                    subscription: 'free',
+                    apiCalls: 2520,
+                    activeServices: 3
+                };
+
+                updateUserProfile(userData);
+                updateUsageStats();
+            } catch (error) {
+                console.error('Failed to load user data:', error);
+            }
+        }
+
+        function updateUserProfile(user) {
+            // Update header
+            document.getElementById('userName').textContent = user.username;
+            document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
+
+            // Update profile page
+            document.getElementById('profileName').textContent = user.username;
+            document.getElementById('profileEmail').textContent = user.email;
+            document.getElementById('profileRole').textContent = user.role.toUpperCase();
+            document.getElementById('profileSubscription').textContent = user.subscription.toUpperCase() + ' PLAN';
+            document.getElementById('profileAvatar').textContent = user.username.charAt(0).toUpperCase();
+            document.getElementById('profileApiCalls').textContent = user.apiCalls.toLocaleString();
+            document.getElementById('profileServices').textContent = user.activeServices;
+        }
+
+        function updateUsageStats() {
+            // Mock usage data
+            document.getElementById('monthlyApiCalls').textContent = '2,520';
+            document.getElementById('monthlyErrors').textContent = '12';
+            document.getElementById('avgResponseTime').textContent = '145ms';
+            document.getElementById('successRate').textContent = '99.5%';
+        }
+
+        async function fetchUserInfo() {
+            try {
+                const res = await fetch('/api/user/me', {
+                    method: 'GET',
+                    credentials: 'include' 
+                });
+
+                if (!res.ok) {
+                    throw new Error('Not authorized');
+                }
+
+                const user = await res.json();
+                updateUserProfile(user);
+            } catch (err) {
+                console.error('Failed to fetch user:', err);
+                // Don't redirect for demo purposes
+            }
+        }
+
+      async function logout() {
+  if (confirm('Are you sure you want to logout?')) {
+    await fetch('/auth/logout', {
+      method: 'POST',
+      credentials: 'include' // 🔑 send cookie
+    });
+
+    window.location.href = '/auth';
+  }
+}
+    </script>
+</body>
+</html>

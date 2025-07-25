@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>VM Container Dashboard</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f4f6f9;
+      margin: 0;
+      padding: 2rem;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      transition: transform 0.2s;
+    }
+
+    .card:hover {
+      transform: scale(1.02);
+    }
+
+    .card h2 {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+      color: #333;
+    }
+
+    .card p {
+      margin: 0.2rem 0;
+      color: #555;
+      font-size: 0.95rem;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: bold;
+      margin-top: 0.5rem;
+    }
+
+    .status.running {
+      background: #d1f5e3;
+      color: #2e7d32;
+    }
+
+    .status.stopped {
+      background: #ffe4e1;
+      color: #d32f2f;
+    }
+
+    .link {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: #007bff;
+      text-decoration: none;
+    }
+
+    .link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Container VM Dashboard</h1>
+  <div class="grid" id="container-list"></div>
+
+  <script>
+    const data = {
+      "685ee3748f9ae5f61961bb32": {
+        "containerId": "173561c108ccd6e8f934ca1dd1b4fe0cd321b5371f111e8db74678b6f3fecabf",
+        "containerName": "vm_685ee3748f9ae5f61961bb32",
+        "sshPort": 2201,
+        "httpPort": 8001,
+        "subdomain": "user61bb32",
+        "domain": "user61bb32.remixorbit.in",
+        "createdAt": "2025-06-27T19:40:13.922Z",
+        "status": "stopped"
+      },
+      "685888a6d2e0a83f676ecae9": {
+        "containerId": "c17c9aa7f55550f0904b1c172c71c33caf3b7186efeea990a35c85c1af5e480d",
+        "containerName": "vm_685888a6d2e0a83f676ecae9",
+        "sshPort": 2202,
+        "httpPort": 8002,
+        "subdomain": "user6ecae9",
+        "domain": "user6ecae9.remixorbit.in",
+        "createdAt": "2025-06-29T14:47:12.959Z",
+        "status": "running"
+      }
+    }
+
+    const containerList = document.getElementById('container-list');
+
+    Object.values(data).forEach(container => {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <h2>${container.containerName}</h2>
+        <p><strong>SSH Port:</strong> ${container.sshPort}</p>
+        <p><strong>HTTP Port:</strong> ${container.httpPort}</p>
+        <p><strong>Subdomain:</strong> ${container.subdomain}</p>
+        <p><strong>Domain:</strong> <a class="link" href="http://${container.domain}" target="_blank">${container.domain}</a></p>
+        <p><strong>Created:</strong> ${new Date(container.createdAt).toLocaleString()}</p>
+        <span class="status ${container.status}">${container.status.toUpperCase()}</span>
+      `;
+      containerList.appendChild(card);
+    });
+  </script>
+
+</body>
+</html>
