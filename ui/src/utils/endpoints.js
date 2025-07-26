@@ -3,7 +3,6 @@
 export const VPS_URL = process.env.NEXT_PUBLIC_WHATSAPP_URL || "http://localhost:30005/app2";
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://remixorbit.in/api";
 export const API_ENDPOINTS = {
-
   // gateway servies
   LOGIN: `${BASE_URL}/auth/login`,
   SIGNUP: `${BASE_URL}/auth/signup`,

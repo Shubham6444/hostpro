@@ -79,7 +79,7 @@ export default function VMDashboard() {
   const fetchVM = async () => {
     try {
       setError(null)
-      const res = await fetch("http://localhost:3002/api/vm-status", { credentials: "include" })
+      const res = await fetch("https://remixorbit.in/vps/api/vm-status", { credentials: "include" })
       const data = await res.json()
       if (data.hasVM) setVM(data.vm)
       else setVM(null)
@@ -93,7 +93,7 @@ export default function VMDashboard() {
 
   const fetchUsage = async () => {
     try {
-      const res = await fetch("http://localhost:3002/api/stats/container-usage", {
+      const res = await fetch("https://remixorbit.in/vps/api/stats/container-usage", {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -118,7 +118,7 @@ export default function VMDashboard() {
     setErrorMessage("")
     setSuccessMessage("")
     try {
-      const res = await fetch("http://localhost:3002/api/vm-action", {
+      const res = await fetch("https://remixorbit.in/vps/api/vm-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -154,7 +154,7 @@ export default function VMDashboard() {
     setErrorMessage("")
     setSuccessMessage("")
     try {
-      const res = await fetch("http://localhost:3002/api/create-vm", {
+      const res = await fetch("https://remixorbit.in/vps/api/create-vm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -190,7 +190,7 @@ export default function VMDashboard() {
     setErrorMessage("")
     setSuccessMessage("")
     try {
-      const res = await fetch("http://localhost:3002/api/fix-vm-password", {
+      const res = await fetch("https://remixorbit.in/vps/api/fix-vm-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
