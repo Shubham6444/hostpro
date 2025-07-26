@@ -77,7 +77,7 @@ export default function LoginPage() {
                                     HostPro
                                 </span>
                             </div>
-                            <h2 className="text-3xl font-black text-white mb-2">Welcome Back</h2>
+                            <h2 className="text-3xl font-black text-white mb-2">Welcome Backd</h2>
                             <p className="text-white/60">Sign in to your hosting dashboard</p>
                         </div>
 
