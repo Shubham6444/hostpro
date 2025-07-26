@@ -13,7 +13,7 @@ const { Mutex } = require("async-mutex");
 const createLock = new Mutex();
 const net = require("net");
 const { createDockerNetwork } = require("../utils/dockerNetwork");
-const { applyPhpNginxConfig } = require("../utils/phpconfig");
+// const { applyPhpNginxConfig } = require("../utils/phpconfig");
 
 async function isPortFreeTCP(port) {
   return new Promise((resolve) => {
@@ -244,8 +244,8 @@ exec /usr/bin/supervisord -n
     });
 
     await container.start();
-await new Promise(r => setTimeout(r, 2000)); // wait for supervisord to start nginx/php
-await applyPhpNginxConfig(docker, container.id);
+// await new Promise(r => setTimeout(r, 2000)); // wait for supervisord to start nginx/php
+// await applyPhpNginxConfig(docker, container.id);
     const data = await this.loadVMData();
     data[userId] = { sshPort, httpPort, containerId: container.id };
     await this.saveVMData(data);
