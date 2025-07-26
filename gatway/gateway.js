@@ -40,7 +40,7 @@ setupProxyRoutes(app);
 // ✅ Middleware
 
 app.use(express.static('public'));
-app.use(cors({ origin: 'http://localhost:8080', methods: ["GET", "POST"], credentials: true }));
+app.use(cors({ origin: 'https://remixorbit.in/', methods: ["GET", "POST"], credentials: true }));
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
