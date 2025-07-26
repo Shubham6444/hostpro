@@ -268,7 +268,7 @@ exec /usr/bin/supervisord -n
       ssl_protocols TLSv1.2 TLSv1.3;
       ssl_ciphers HIGH:!aNULL:!MD5;
       resolver 8.8.8.8;  # ✅ Moved here, outside location
-
+      return 404;
       location / {
           proxy_pass http://localhost:${httpPort};
           proxy_set_header Host $host;
