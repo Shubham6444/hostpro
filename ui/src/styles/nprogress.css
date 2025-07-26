@@ -1,0 +1,19 @@
+/* /styles/nprogress.css */
+
+#nprogress {
+  pointer-events: none;
+}
+
+#nprogress .bar {
+  background: linear-gradient(to right, #ffff02, #ff6720); /* Indigo to Purple */
+  position: fixed;
+     bottom: 3px;    /* ✅ Important: attach to bottom */
+  left: 0;
+  width: 100%;
+  height: 4px;
+  z-index: 9999;    /* ⬆️ Make sure it's above all content */
+}
+
+#nprogress .peg {
+  display: none;    /* Hide default flicker/glow */
+}

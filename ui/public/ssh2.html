@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Web SSH Terminal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: black;
+    }
+    #terminal {
+      height: 100%;
+      width: 100%;
+    }
+    #form {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+      background: #111;
+      padding: 10px;
+      border-radius: 6px;
+    }
+    input {
+      margin: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="form">
+    <input type="text" id="host" placeholder="Host" value="localhost" />
+    <input type="text" id="port" placeholder="Port" value="2201" />
+    <input type="text" id="username" placeholder="Username" value="vpsuser" />
+    <input type="password" id="password" placeholder="Password" value="123456" />
+    <button onclick="connect()">Connect</button>
+  </div>
+
+  <div id="terminal"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.min.js"></script>
+  <script>
+    let socket;
+    const term = new Terminal({ cursorBlink: true });
+    term.open(document.getElementById("terminal"));
+
+    function connect() {
+      const host = document.getElementById("host").value;
+      const port = parseInt(document.getElementById("port").value);
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+
+      socket = new WebSocket(`ws://localhost:3002/ssh`);
+
+      socket.onopen = () => {
+        // send credentials
+        socket.send(JSON.stringify({ host, port, username, password }));
+
+        // send input from terminal
+        term.onData(data => {
+          if (socket.readyState === WebSocket.OPEN) {
+            socket.send(new TextEncoder().encode(data));
+          }
+        });
+      };
+
+      socket.onmessage = e => term.write(e.data);
+      socket.onerror = err => term.write("\r\n[WebSocket error]\r\n");
+      socket.onclose = () => term.write("\r\n[Connection closed]\r\n");
+    }
+  </script>
+</body>
+</html>
