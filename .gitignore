@@ -1,1 +1,6 @@
 .git
+
+cd C:\Users\shubham maurya\Desktop\hostpro\apps\hostpro
+git add .
+git commit -m "Added"
+git push origin main
