@@ -1,7 +1,7 @@
 // src/services/utils/endpoint.js
 // export const GATEWAY_URL = process.env.NEXT_PUBLIC_GATEWAY_URL || "http://localhost:3000";
 export const VPS_URL = process.env.NEXT_PUBLIC_WHATSAPP_URL || "http://localhost:30005/app2";
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://remixorbit.in:3000";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://remixorbit.in/api";
 export const API_ENDPOINTS = {
 
   // gateway servies
