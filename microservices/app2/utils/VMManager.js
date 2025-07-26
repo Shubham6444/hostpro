@@ -261,8 +261,13 @@ await applyPhpNginxConfig(docker, container.id);
 
   static async generateNginxConfig(userId, httpPort, subdomain) {
     const configContent = `server {
-      listen 443;
+      listen 443 ssl http2;
       server_name ${subdomain}.${CONFIG.DOMAIN};
+      ssl_certificate /etc/letsencrypt/live/${CONFIG.DOMAIN}-0001/fullchain.pem;
+      ssl_certificate_key /etc/letsencrypt/live/${CONFIG.DOMAIN}-0001/privkey.pem;
+      ssl_protocols TLSv1.2 TLSv1.3;
+      ssl_ciphers HIGH:!aNULL:!MD5;
+      resolver 8.8.8.8;  # ✅ Moved here, outside location
 
       location / {
           proxy_pass http://localhost:${httpPort};
@@ -270,6 +275,7 @@ await applyPhpNginxConfig(docker, container.id);
           proxy_set_header X-Real-IP $remote_addr;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
+          
       }
     }`;
 
