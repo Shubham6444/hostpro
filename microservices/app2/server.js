@@ -22,7 +22,7 @@ const userRoutes = require("./routers/adminRoutes/vm_mappings");
 const sshRouter = require("./routers/ssh2connt");
 
 // Middleware
-const allowedOrigins = ['http://localhost:8080', 'http://localhost:3000'];
+const allowedOrigins = ['https://remixorbit.in/', 'http://localhost:3000'];
 app.use("/", sshRouter); // ✅ WebSocket SSH router
 
 app.use(cors({
